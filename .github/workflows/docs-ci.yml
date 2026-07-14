@@ -23,7 +23,7 @@ jobs:
           styles: tooling/styles
 
   draft-docs-from-spec-change:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
