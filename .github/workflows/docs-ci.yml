@@ -5,6 +5,11 @@ on:
     paths:
       - "src/main/resources/openapi.yaml"
       - "docs/**"
+  push:
+    branches: [master]
+    paths:
+      - "src/main/resources/openapi.yaml"
+      - "docs/**"
 
 jobs:
   lint-spec:
@@ -46,3 +51,15 @@ jobs:
           title: "[auto-draft] Update docs for spec change"
           body: "Opened automatically from a spec diff. Needs human review before merge."
           branch: auto/docs-draft
+
+  sync-to-docs-site:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch docs-sync to the aggregator site
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: token ${{ secrets.DOCS_SYNC_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/brooklynpickles/docs-pipeline-site/dispatches \
+            -d '{"event_type":"docs-sync","client_payload":{"repo":"swagger-petstore","ref":"master","product_dir":"petstore","label":"Petstore","position":1}}'
