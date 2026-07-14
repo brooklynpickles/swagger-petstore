@@ -1,0 +1,10 @@
+extends: existence
+message: "Avoid the hedge word '%s'. State it directly or explain the exception."
+level: error
+ignorecase: true
+tokens:
+  - simply
+  - obviously
+  - just
+  - easily
+  - clearly

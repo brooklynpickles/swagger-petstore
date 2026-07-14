@@ -1,0 +1,12 @@
+extends: ["spectral:oas"]
+rules:
+  operation-description: error
+  operation-tags: error
+  info-description: error
+  schema-properties-have-description:
+    description: "Every schema property should have a description for docs generation to produce useful reference pages."
+    severity: error
+    given: "$.components.schemas.*.properties.*"
+    then:
+      field: description
+      function: truthy

@@ -1,0 +1,48 @@
+name: Docs CI
+
+on:
+  pull_request:
+    paths:
+      - "<<SPEC_PATH_GLOB>>"
+      - "<<DOCS_PATH_GLOB>>"
+
+jobs:
+  lint-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx @stoplight/spectral-cli lint <<SPEC_PATH>> --ruleset tooling/.spectral.yaml
+
+  lint-prose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: errata-ai/vale-action@v2
+        with:
+          files: <<DOCS_DIR>>
+          styles: tooling/styles
+
+  draft-docs-from-spec-change:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - run: git show HEAD~1:<<SPEC_PATH>> > /tmp/old-spec.yaml || true
+      - name: Draft docs update
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python3 tooling/scripts/draft_docs_from_diff.py \
+            --old-spec /tmp/old-spec.yaml \
+            --new-spec <<SPEC_PATH>> \
+            --doc <<DOCS_TARGET_FILE>> \
+            --out <<DOCS_TARGET_FILE>> \
+            --product-name "<<PRODUCT_NAME>>"
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "docs: draft update from spec change"
+          title: "[auto-draft] Update docs for spec change"
+          body: "Opened automatically from a spec diff. Needs human review before merge."
+          branch: auto/docs-draft

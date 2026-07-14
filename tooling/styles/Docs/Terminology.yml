@@ -1,0 +1,10 @@
+extends: substitution
+message: "Use '%s' instead of '%s' for consistent terminology."
+level: error
+ignorecase: true
+swap:
+  end point: endpoint
+  end-point: endpoint
+  API Key: API key
+  Github: GitHub
+  Javascript: JavaScript
