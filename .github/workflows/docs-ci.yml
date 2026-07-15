@@ -26,6 +26,11 @@ jobs:
 
   draft-docs-from-spec-change:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # create-pull-request needs write to push the draft branch and open the PR;
+    # the default GITHUB_TOKEN is read-only.
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
