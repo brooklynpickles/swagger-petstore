@@ -1,48 +1,86 @@
 name: Docs CI
 
+# Scaffold for a source fork's docs pipeline. Replace every <<PLACEHOLDER>>.
+# This is the static-spec variant (a spec file checked into the repo). For a
+# repo whose spec is generated at runtime, see full-stack-fastapi-template,
+# which starts the app and diffs a live fetch against a checked-in snapshot.
+#
+# One-time repo setup this workflow depends on:
+#   - Secret ANTHROPIC_API_KEY  (real drafts; falls back to a mock without it)
+#   - Secret DOCS_SYNC_TOKEN    (PAT that can dispatch to the aggregator site)
+#   - Settings > Actions > General > Workflow permissions:
+#       "Allow GitHub Actions to create and approve pull requests"
+
 on:
   pull_request:
     paths:
-      - "<<SPEC_PATH_GLOB>>"
-      - "<<DOCS_PATH_GLOB>>"
+      - "<<SPEC_PATH>>"
+      - "<<DOCS_DIR>>/**"
+  push:
+    branches: [<<DEFAULT_BRANCH>>]
+    paths:
+      - "<<SPEC_PATH>>"
+      - "<<DOCS_DIR>>/**"
 
 jobs:
-  lint-spec:
+  # One job for both linters: each extra job pays its own runner spin-up and
+  # checkout, and these finish in seconds.
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: npx @stoplight/spectral-cli lint <<SPEC_PATH>> --ruleset tooling/.spectral.yaml
-
-  lint-prose:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: errata-ai/vale-action@v2
-        with:
-          files: <<DOCS_DIR>>
-          styles: tooling/styles
+      - uses: actions/checkout@v7
+      - run: npx --yes @stoplight/spectral-cli@6.16.1 lint <<SPEC_PATH>> --ruleset tooling/.spectral.yaml
+      # Run Vale directly (pinned) instead of the reviewdog-based action: it
+      # avoids the action's PR-only reporter and resolves StylesPath relative to
+      # the ruleset. StylesPath in tooling/.vale.ini points at tooling/styles.
+      - name: Vale prose lint
+        run: |
+          curl -sSfL https://github.com/errata-ai/vale/releases/download/v3.15.1/vale_3.15.1_Linux_64-bit.tar.gz \
+            | tar -xz vale
+          ./vale --config=tooling/.vale.ini <<DOCS_DIR>>
 
   draft-docs-from-spec-change:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/<<DEFAULT_BRANCH>>'
+    # create-pull-request needs write to push the draft branch and open the PR;
+    # the default GITHUB_TOKEN is read-only. The repo setting above is also
+    # required or the push still 403s.
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 2
+      # On the first commit this produces an empty file; the script treats an
+      # empty diff as "nothing to draft" and skips instead of diffing nothing.
       - run: git show HEAD~1:<<SPEC_PATH>> > /tmp/old-spec.yaml || true
       - name: Draft docs update
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          pip install anthropic  # optional for the script; gives SDK retries/timeouts in CI
           python3 tooling/scripts/draft_docs_from_diff.py \
             --old-spec /tmp/old-spec.yaml \
             --new-spec <<SPEC_PATH>> \
             --doc <<DOCS_TARGET_FILE>> \
             --out <<DOCS_TARGET_FILE>> \
             --product-name "<<PRODUCT_NAME>>"
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v8
         with:
           commit-message: "docs: draft update from spec change"
           title: "[auto-draft] Update docs for spec change"
           body: "Opened automatically from a spec diff. Needs human review before merge."
           branch: auto/docs-draft
+
+  sync-to-docs-site:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/<<DEFAULT_BRANCH>>'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch docs-sync to the aggregator site
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: token ${{ secrets.DOCS_SYNC_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/brooklynpickles/docs-pipeline-site/dispatches \
+            -d '{"event_type":"docs-sync","client_payload":{"repo":"<<REPO>>","ref":"<<DEFAULT_BRANCH>>","product_dir":"<<PRODUCT_DIR>>","label":"<<LABEL>>","position":<<POSITION>>}}'
