@@ -674,10 +674,12 @@ components:
       type: object
       properties:
         id:
+          description: Unique identifier for the order, assigned by the store.
           type: integer
           format: int64
           example: 10
         petId:
+          description: Identifier of the pet being ordered.
           type: integer
           format: int64
           example: 198772
