@@ -19,10 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: npx --yes @stoplight/spectral-cli@6.16.1 lint src/main/resources/openapi.yaml --ruleset tooling/.spectral.yaml
-      - uses: errata-ai/vale-action@v2
-        with:
-          files: docs
-          styles: tooling/styles
+      # Run Vale directly (pinned) instead of the reviewdog-based action: it
+      # avoids the action's PR-only reporter and resolves StylesPath relative to
+      # the ruleset. StylesPath in tooling/.vale.ini points at tooling/styles.
+      - name: Vale prose lint
+        run: |
+          curl -sSfL https://github.com/errata-ai/vale/releases/download/v3.15.1/vale_3.15.1_Linux_64-bit.tar.gz \
+            | tar -xz vale
+          ./vale --config=tooling/.vale.ini docs
 
   draft-docs-from-spec-change:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'

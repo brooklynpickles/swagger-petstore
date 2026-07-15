@@ -684,6 +684,7 @@ components:
           format: int64
           example: 198772
         quantity:
+          description: Number of pets included in the order.
           type: integer
           format: int32
           example: 7
