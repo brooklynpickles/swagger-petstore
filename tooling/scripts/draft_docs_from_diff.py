@@ -82,10 +82,14 @@ def call_claude(system_prompt: str, user_prompt: str) -> str:
 
 def mock_draft(current_doc: str, diff_text: str) -> str:
     """Stand-in used only when no API key is present, so the demo still runs."""
+    # Docs render through MDX, which doesn't understand HTML comments (<!-- -->) -
+    # it needs the JSX comment form. Guard against the diff text itself containing
+    # "*/" and closing the comment early.
+    safe_diff = diff_text.replace("*/", "*​/")
     return current_doc.rstrip() + (
-        "\n\n<!-- MOCK DRAFT: no ANTHROPIC_API_KEY present. "
-        "This is a placeholder, not a real generated update. -->\n"
-        f"\n<!-- Diff that would have driven the real draft:\n{diff_text}\n-->\n"
+        "\n\n{/* MOCK DRAFT: no ANTHROPIC_API_KEY present. "
+        "This is a placeholder, not a real generated update. */}\n"
+        f"\n{{/* Diff that would have driven the real draft:\n{safe_diff}\n*/}}\n"
     )
 
 
