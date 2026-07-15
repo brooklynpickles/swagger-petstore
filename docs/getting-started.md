@@ -22,18 +22,6 @@ The API returns standard HTTP status codes. A 404 means the requested pet,
 order, or user was not found. A 400 means the request body failed
 validation against the schema.
 
-{/* MOCK DRAFT: no ANTHROPIC_API_KEY present. This is a placeholder, not a real generated update. */}
+## Order fields
 
-{/* Diff that would have driven the real draft:
---- /tmp/old-spec.yaml
-+++ src/main/resources/openapi.yaml
-@@ -684,6 +684,7 @@
-           format: int64
-           example: 198772
-         quantity:
-+          description: Number of pets included in the order.
-           type: integer
-           format: int32
-           example: 7
-
-*/}
+**`quantity`** — Number of pets included in the order. Introduced in the current spec revision.
